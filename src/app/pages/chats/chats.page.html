@@ -4,7 +4,7 @@
       <div>
         <ion-grid style="padding:0px">
           <ion-row style="padding:0px">
-              <ion-col class="colImage">
+              <ion-col class="colImage" size="8">
                 <div class="imageDiv">
                   <span class="spanIcon"><ion-icon name="{{arrow_back}}" style="font-size: 25px;color: #214376;" (click)="functionBackHome()"></ion-icon></span>
                   <img src="../../assets/images/logoImage.png" class="imageLogo">
@@ -14,7 +14,7 @@
                   </div>
                 </div>
               </ion-col>
-              <ion-col class="colIcon">
+              <ion-col class="colIcon" size="4">
                 <div class="divIcon" id="popover-button"><ion-icon name="list" class="searchIcon" ></ion-icon></div>
                 <ion-popover class="divIconpopover" trigger="popover-button" [dismissOnSelect]="true">
                   <ng-template>
