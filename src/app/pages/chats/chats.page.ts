@@ -1374,6 +1374,8 @@ public send_note_class: any;
     let typeTime =  this.hour >= 12 ? 'PM' : 'AM';
     let time = this.hour+":"+this.minutes+" "+typeTime;
     if (this.onMessage.trim()) {
+      if(typeMsg == 1)
+        this.onMessage = this.userName+":"+this.onMessage
       let sendValues = {'privateNote':typeMsg,'mainUserName':this.mainUserName,'userName':this.userName,'password':this.password,'apiKey':this.apiKey,'mobile':this.selectNumber,'sessionLogin':this.sessionLogin,'chatTxt':this.onMessage};
       this.chatService.sendMessage(sendValues).then(async dataHist=>{
         this.returnResultDataBySession = dataHist;
