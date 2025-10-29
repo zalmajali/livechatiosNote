@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 import { Camera, CameraOptions } from '@awesome-cordova-plugins/camera/ngx';
 import { FileTransfer, FileUploadOptions, FileTransferObject } from '@awesome-cordova-plugins/file-transfer/ngx';
 import { Chooser } from '@awesome-cordova-plugins/chooser/ngx';
+import { FilePath } from '@awesome-cordova-plugins/file-path/ngx';
 declare var resolveLocalFileSystemURL: any;
 import { AndroidPermissions } from '@awesome-cordova-plugins/android-permissions/ngx';
 @Component({
@@ -81,7 +82,8 @@ public showPassword: boolean = false;
 public fileChosen: any=0;
 public send_msg_sucsess: any;
 public send_msg_fial: any;
-constructor(private androidPermissions: AndroidPermissions,private chooser: Chooser,private transfer: FileTransfer,private camera: Camera,private chatService: ChatService,private alertController:AlertController,private router: Router,private userService: UserService,private globalization: Globalization, private translate: TranslateService,private modalController: ModalController,private network:Network,private menu:MenuController,private storage: Storage,private platform: Platform,private navCtrl: NavController,private toastCtrl: ToastController,private loading: LoadingController) {
+public error_size_of_file: any;
+constructor(private androidPermissions: AndroidPermissions,private filePath: FilePath,private chooser: Chooser,private transfer: FileTransfer,private camera: Camera,private chatService: ChatService,private alertController:AlertController,private router: Router,private userService: UserService,private globalization: Globalization, private translate: TranslateService,private modalController: ModalController,private network:Network,private menu:MenuController,private storage: Storage,private platform: Platform,private navCtrl: NavController,private toastCtrl: ToastController,private loading: LoadingController) {
   this.platform.backButton.subscribeWithPriority(10, () => {
     this.modalController.dismiss({
       "key":0
@@ -109,6 +111,9 @@ constructor(private androidPermissions: AndroidPermissions,private chooser: Choo
     });
     this.translate.get('send_msg_fial').subscribe((res: string) => {
       this.send_msg_fial = res;
+    });
+    this.translate.get('error_size_of_file').subscribe((res: string) => {
+      this.error_size_of_file = res;
     });
   }
   async ngOnInit() {
@@ -274,34 +279,7 @@ constructor(private androidPermissions: AndroidPermissions,private chooser: Choo
       this.showInputArrayValAdd[index]['replaval'] = val;
     }
     this.arraySendToServer[index] = this.showInputArrayValAdd[index]['val']
-  }
-  functionSendFile(){
-    let currentDate = new Date();
-    this.year = currentDate.getFullYear();
-    this.month = currentDate.getMonth() + 1; // Months are zero-based (0 = January)
-    this.day = currentDate.getDate();
-    this.hour = currentDate.getHours();
-    this.minutes  = currentDate.getMinutes();
-    this.seconds = currentDate.getSeconds();
-    if(this.month<10)
-      this.month = '0'+ this.month;
-    if(this.day<10) 
-      this.day = '0'+ this.day;
-    if(this.hour<10)   
-      this.hour = '0'+ this.hour;
-    if(this.minutes<10) 
-      this.minutes = '0'+ this.minutes;
-    if(this.seconds<10) 
-      this.seconds = '0'+ this.seconds;
-    let date = this.year+"/"+this.month+"/"+this.day;
-    let typeTime =  this.hour >= 12 ? 'PM' : 'AM';
-    let time = this.hour+":"+this.minutes+" "+typeTime;
-    const fileTransfer: FileTransferObject = this.transfer.create();
-    this.chooser.getFile().then(async (file) =>{
-      this.fileChosen=1;
-      this.filedata = file;
-    })
-  }  
+  } 
   async requestMediaPermission(): Promise<boolean> {
     if (!this.platform.is('android')) return true;
     const androidVersion = parseInt((navigator.userAgent.match(/Android (\d+)/) || [])[1], 10);
@@ -326,6 +304,55 @@ constructor(private androidPermissions: AndroidPermissions,private chooser: Choo
       }
       return true;
     }
+  }
+ async functionSendFile(){
+    let currentDate = new Date();
+    this.year = currentDate.getFullYear();
+    this.month = currentDate.getMonth() + 1; // Months are zero-based (0 = January)
+    this.day = currentDate.getDate();
+    this.hour = currentDate.getHours();
+    this.minutes  = currentDate.getMinutes();
+    this.seconds = currentDate.getSeconds();
+    if(this.month<10)
+      this.month = '0'+ this.month;
+    if(this.day<10) 
+      this.day = '0'+ this.day;
+    if(this.hour<10)   
+      this.hour = '0'+ this.hour;
+    if(this.minutes<10) 
+      this.minutes = '0'+ this.minutes;
+    if(this.seconds<10) 
+      this.seconds = '0'+ this.seconds;
+    let date = this.year+"/"+this.month+"/"+this.day;
+    let typeTime =  this.hour >= 12 ? 'PM' : 'AM';
+    let time = this.hour+":"+this.minutes+" "+typeTime;
+    const fileTransfer: FileTransferObject = this.transfer.create();
+    this.chooser.getFile().then(async (fileUrl:any) =>{
+      this.fileChosen=1;
+      this.filedata = fileUrl;
+      this.filePath.resolveNativePath(fileUrl)
+        .then(async (nativePath: string) => {
+          const sizeOfFile = await this.getFileSize(nativePath);
+          if(sizeOfFile > 100){
+            this.filedata = "";
+            this.displayResult(this.error_size_of_file)
+          }
+        })
+        .catch((err) => {
+          this.filedata = "";
+          this.displayResult(this.error_size_of_file)
+        });
+    })
+  } 
+  getFileSize(fileUri: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      resolveLocalFileSystemURL(fileUri, (fileEntry:any) => {
+        fileEntry.file((file:any) => {
+          const sizeMB = file.size / (1024*1024); // الحجم بالميغابايت
+          resolve(sizeMB);
+        }, (err:any) => reject(err));
+      }, (err:any) => reject(err));
+    });
   }
   async functionSendImage(){
     const hasPermission = await this.requestMediaPermission();
@@ -365,6 +392,18 @@ constructor(private androidPermissions: AndroidPermissions,private chooser: Choo
     this.camera.getPicture(optionsD).then(async(imageData) => {
       this.fileChosen=1;
       this.filedata = imageData;
+      this.filePath.resolveNativePath(imageData)
+      .then(async (nativePath: string) => {
+        const sizeOfFile = await this.getFileSize(nativePath);
+        if(sizeOfFile > 5){
+          this.filedata = "";
+          this.displayResult(this.error_size_of_file)
+        }
+      })
+      .catch((err) => {
+        this.filedata = "";
+        this.displayResult(this.error_size_of_file)
+      });
     }, (err) => {
     });
   } 
@@ -403,9 +442,26 @@ constructor(private androidPermissions: AndroidPermissions,private chooser: Choo
     this.camera.getPicture(optionsD).then(async(imageData) => {
       this.fileChosen=1;
       this.filedata = imageData;
+      this.filePath.resolveNativePath(imageData)
+      .then(async (nativePath: string) => {
+        const sizeOfFile = await this.getFileSize(nativePath);
+        if(sizeOfFile > 16){
+          this.filedata = "";
+          this.displayResult(this.error_size_of_file)
+        }
+      })
+      .catch((err) => {
+        this.filedata = "";
+        this.displayResult(this.error_size_of_file)
+      });
     }, (err) => {
     });
   } 
+
+
+
+
+
   selectTempName(event:any){
     this.showTextArray = 0;
     this.showAddFileArray = 0;
