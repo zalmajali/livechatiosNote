@@ -656,9 +656,10 @@ public error_size_of_file: any;
       })
       .catch((err) => {
         imageData = "";
-        this.displayResult(this.error_size_of_file)
+        alert(JSON.stringify(err))
+        this.displayResult("sdfsdfsddfff")
       });
-      if (this.platform.is('android') && imageData.startsWith('content://')) {
+      if(imageData && this.platform.is('android') && imageData.startsWith('content://')) {
         resolveLocalFileSystemURL(imageData, (fileEntry:any) => {
           fileEntry.file((file:any) => {
             const reader = new FileReader();
