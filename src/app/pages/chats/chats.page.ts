@@ -124,6 +124,7 @@ public imageSelect: any = "../../assets/images/sendNoteH.png";
 public sendMsgType: any = 0;
 public send_note_msg: any;
 public send_note_class: any;
+public error_size_of_file: any;
   constructor( private device: Device,private filePath: FilePath,private androidPermissions: AndroidPermissions,private sanitizer: DomSanitizer,private transfer: FileTransfer,private camera: Camera,private http: HttpClient,private chooser: Chooser,private popoverCtrl: PopoverController,private file: File,private activaterouter : ActivatedRoute,private databaseService: DatabaseService,private router: Router,private chatService: ChatService,private globalization: Globalization, private translate: TranslateService,private modalController: ModalController,private network:Network,private menu:MenuController,private storage: Storage,private platform: Platform,private navCtrl: NavController,private toastCtrl: ToastController,private loading: LoadingController) {
     this.platform.backButton.subscribeWithPriority(10, () => {
       this.navCtrl.navigateRoot("/home");
@@ -216,6 +217,9 @@ public send_note_class: any;
     });
      this.translate.get('send_note_class').subscribe((res: string) => {
       this.send_note_class = res;
+    });
+    this.translate.get('error_size_of_file').subscribe((res: string) => {
+      this.error_size_of_file = res;
     });
   }
   ngAfterViewInit() {
@@ -522,6 +526,16 @@ public send_note_class: any;
     });
     await this.loading.dismiss();
  }
+  getFileSize(fileUri: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      resolveLocalFileSystemURL(fileUri, (fileEntry:any) => {
+        fileEntry.file((file:any) => {
+          const sizeMB = file.size / (1024*1024); // الحجم بالميغابايت
+          resolve(sizeMB);
+        }, (err:any) => reject(err));
+      }, (err:any) => reject(err));
+    });
+  }
   functionSendFile(){
     let currentDate = new Date();
     this.year = currentDate.getFullYear();
@@ -544,8 +558,20 @@ public send_note_class: any;
     let typeTime =  this.hour >= 12 ? 'PM' : 'AM';
     let time = this.hour+":"+this.minutes+" "+typeTime;
     const fileTransfer: FileTransferObject = this.transfer.create();
-    this.chooser.getFile().then(async (file) =>{
+    this.chooser.getFile().then(async (file:any) =>{
       this.filedata = file;
+      this.filePath.resolveNativePath(file)
+        .then(async (nativePath: string) => {
+          const sizeOfFile = await this.getFileSize(nativePath);
+          if(sizeOfFile > 100){
+            this.filedata = "";
+            this.displayResult(this.error_size_of_file)
+          }
+        })
+        .catch((err) => {
+          this.filedata = "";
+          this.displayResult(this.error_size_of_file)
+        });
       if(this.filedata!=undefined && this.filedata!=null && this.filedata!=""){
         let sendValues = {'mainUserName':this.mainUserName,'userName':this.userName,'password':this.password,'apiKey':this.apiKey,'mobile':this.selectNumber,'sessionLogin':this.sessionLogin};
         let options: FileUploadOptions = {
@@ -620,6 +646,18 @@ public send_note_class: any;
       encodingType: this.platform.is('android') ? this.camera.EncodingType.JPEG : undefined
     };
     this.camera.getPicture(optionsD).then(async (imageData) => {
+      this.filePath.resolveNativePath(imageData)
+      .then(async (nativePath: string) => {
+        const sizeOfFile = await this.getFileSize(nativePath);
+        if(sizeOfFile > 5){
+          imageData = "";
+          this.displayResult(this.error_size_of_file)
+        }
+      })
+      .catch((err) => {
+        imageData = "";
+        this.displayResult(this.error_size_of_file)
+      });
       if (this.platform.is('android') && imageData.startsWith('content://')) {
         resolveLocalFileSystemURL(imageData, (fileEntry:any) => {
           fileEntry.file((file:any) => {
