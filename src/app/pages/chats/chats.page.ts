@@ -648,10 +648,46 @@ public error_size_of_file: any;
     this.camera.getPicture(optionsD).then(async (imageData) => {
       this.filePath.resolveNativePath(imageData)
       .then(async (nativePath: string) => {
+        alert("sdfsdfsdfsdf")
         const sizeOfFile = await this.getFileSize(nativePath);
         if(sizeOfFile > 5){
           imageData = "";
           this.displayResult(this.error_size_of_file)
+        }else{
+          if(this.platform.is('android') && imageData.startsWith('content://')) {
+            resolveLocalFileSystemURL(imageData, (fileEntry:any) => {
+              fileEntry.file((file:any) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  if(reader.result) {
+                    let extension = '';
+                      if (file.type === 'image/jpeg') extension = '.jpg';
+                      else if (file.type === 'image/png') extension = '.png';
+                      else if (file.type === 'image/gif') extension = '.gif';
+                      else extension = '.bin'; // fallback
+                      let finalName = file.name;
+                      let imageName = imageData.substring(imageData.lastIndexOf('/') + 1);
+                      if (!finalName || !finalName.includes('.')) {
+                        finalName = imageName + extension;
+                      }
+                    this.uploadImageFromContentUri(reader.result as ArrayBuffer, finalName, file.type);
+                  } else {
+                    alert("error file");
+                  }
+                };
+                reader.onerror = (error) => {
+                  alert("error file");
+                };
+                reader.readAsArrayBuffer(file);
+              }, (fileError:any) => {
+                alert("error file");
+              });
+            }, (urlError:any) => {
+            alert("error file");
+          });
+        } else {
+          this.uploadImage(imageData);
+        }
         }
       })
       .catch((err) => {
@@ -659,40 +695,6 @@ public error_size_of_file: any;
         alert(JSON.stringify(err))
         this.displayResult("sdfsdfsddfff")
       });
-      if(imageData && this.platform.is('android') && imageData.startsWith('content://')) {
-        resolveLocalFileSystemURL(imageData, (fileEntry:any) => {
-          fileEntry.file((file:any) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if(reader.result) {
-                let extension = '';
-                  if (file.type === 'image/jpeg') extension = '.jpg';
-                  else if (file.type === 'image/png') extension = '.png';
-                  else if (file.type === 'image/gif') extension = '.gif';
-                  else extension = '.bin'; // fallback
-                  let finalName = file.name;
-                  let imageName = imageData.substring(imageData.lastIndexOf('/') + 1);
-                  if (!finalName || !finalName.includes('.')) {
-                    finalName = imageName + extension;
-                  }
-                this.uploadImageFromContentUri(reader.result as ArrayBuffer, finalName, file.type);
-              } else {
-                alert("error file");
-              }
-            };
-            reader.onerror = (error) => {
-              alert("error file");
-            };
-            reader.readAsArrayBuffer(file);
-          }, (fileError:any) => {
-            alert("error file");
-          });
-        }, (urlError:any) => {
-          alert("error file");
-        });
-      } else {
-        this.uploadImage(imageData);
-      }
     }, (err) => {
       alert("error file");
     });
